@@ -125,7 +125,7 @@ jobs:
           aws eks update-kubeconfig --region us-east-1 --name movie-picture-cluster
 
       - name: Run init.sh
-        run: ./init.sh
+        run: bash init.sh
         working-directory: ./setup
 
       - name: Set Docker image in Kustomize
