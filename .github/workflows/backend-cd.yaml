@@ -9,7 +9,7 @@ on:
       - "starter/backend/**"
 
 env:
-  PYTHON_VERSION: '3.10'
+  PYTHON_VERSION: '3.12'
 
 jobs:
   lint:
@@ -132,7 +132,7 @@ jobs:
         run: aws eks update-kubeconfig --region us-east-1 --name movie-picture-cluster
 
       - name: Run init.sh
-        run: ./init.sh
+        run: bash init.sh
         working-directory: ./setup
 
       - name: Set Docker image in Kustomize
