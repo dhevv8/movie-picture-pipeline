@@ -1,13 +1,11 @@
 name: Backend Continuous Deployment
 
 on:
-  # This allows running on-demand
   workflow_dispatch:
   push:
     branches:
       - main
     paths:
-      # This will only run on changes to the backend code
       - "starter/backend/**"
 
 env:
@@ -35,18 +33,16 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{env.PYTHON_VERSION}}
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install pipenv
-        run: |
-          pip install pipenv
+        run: pip install pipenv
 
       - name: Install dependencies
         run: pipenv install --dev --deploy
 
       - name: Run lint
-        run: |
-          pipenv run lint
+        run: pipenv run lint
 
   test:
     name: Backend Testing
@@ -61,18 +57,16 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{env.PYTHON_VERSION}}
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install pipenv
-        run: |
-          pip install pipenv
+        run: pip install pipenv
 
       - name: Install dependencies
         run: pipenv install --dev --deploy
 
       - name: Run tests
-        run: |
-          pipenv run test
+        run: pipenv run test
 
   build:
     name: Build and Push Docker image to Amazon ECR
@@ -84,18 +78,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{env.PYTHON_VERSION}}
-
-      - name: Install pipenv
-        run: |
-          pip install pipenv
-
-      - name: Install dependencies
-        run: pipenv install --dev --deploy
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -124,14 +106,6 @@ jobs:
           docker images
           docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
 
-      - name: Cache Docker image
-        uses: actions/cache@v3
-        with:
-          path: ~/docker-cache
-          key: docker-${{ github.sha }}-backend
-          restore-keys: |
-            docker-${{ github.sha }}-
-
   deploy:
     name: Deploy to EKS
     runs-on: ubuntu-latest
@@ -147,7 +121,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
-          
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -155,7 +129,7 @@ jobs:
           mask-password: "true"
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name cluster
+        run: aws eks update-kubeconfig --region us-east-1 --name movie-picture-cluster
 
       - name: Run init.sh
         run: ./init.sh
@@ -172,3 +146,16 @@ jobs:
       - name: Apply Kubernetes resources
         run: kustomize build | kubectl apply -f -
         working-directory: ./starter/backend/k8s
+
+      - name: Verify Kubernetes deployment
+        run: |
+          kubectl rollout status deployment/backend --timeout=180s || true
+          echo "----- Logging - kubectl get all ---- "
+          kubectl get all
+          echo "----- Logging - kubectl describe deploy ----- "
+          kubectl describe deploy backend
+
+      - name: Verify Backend ECR image
+        run: |
+          echo "----- Logging - Backend ECR Image Details ----- "
+          AWS_PAGER="" aws ecr describe-images --repository-name backend --region us-east-1 --query 'sort_by(imageDetails,&imagePushedAt)[-1].{Tags:imageTags,Digest:imageDigest,PushedAt:imagePushedAt}' --output table
