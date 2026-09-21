@@ -11,7 +11,7 @@ on:
       - "starter/backend/**"
 
 env:
-  PYTHON_VERSION: 3.11
+  PYTHON_VERSION: '3.10'
 
 jobs:
   lint:
@@ -42,8 +42,7 @@ jobs:
           pip install pipenv
 
       - name: Install dependencies
-        run: |
-          pipenv install
+        run: pipenv install --dev --deploy
 
       - name: Run lint
         run: |
@@ -69,8 +68,7 @@ jobs:
           pip install pipenv
 
       - name: Install dependencies
-        run: |
-          pipenv install
+        run: pipenv install --dev --deploy
 
       - name: Run tests
         run: |
@@ -97,8 +95,7 @@ jobs:
           pip install pipenv
 
       - name: Install dependencies
-        run: |
-          pipenv install
+        run: pipenv install --dev --deploy
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -118,7 +115,7 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: backend
-          IMAGE_TAG: latest
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           echo "Registry: $REGISTRY"
           echo "Repository: $REPOSITORY"
@@ -161,14 +158,14 @@ jobs:
         run: aws eks update-kubeconfig --name cluster
 
       - name: Run init.sh
-        run: ./init.sh || true
+        run: ./init.sh
         working-directory: ./setup
 
       - name: Set Docker image in Kustomize
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: backend
-          IMAGE_TAG: latest
+          IMAGE_TAG: ${{ github.sha }}
         run: kustomize edit set image backend=$REGISTRY/$REPOSITORY:$IMAGE_TAG
         working-directory: ./starter/backend/k8s
 

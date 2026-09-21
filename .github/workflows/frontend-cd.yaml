@@ -23,6 +23,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: starter/frontend/package-lock.json
+
       - name: Cache Node.js dependencies
         uses: actions/cache@v3
         with:
@@ -32,12 +39,10 @@ jobs:
             npm-
 
       - name: Install dependencies
-        run: |
-          npm install
+        run: npm ci
 
       - name: Run ESLint
-        run: |
-          npm run lint -- --fix
+        run: npm run lint
 
   test:
     name: Frontend Testing
@@ -49,13 +54,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: starter/frontend/package-lock.json
+
       - name: Install dependencies
-        run: | 
-          npm install
+        run: npm ci
 
       - name: Run tests
-        run: |
-          npm test
+        run: npm test -- --watchAll=false
+        env:
+          CI: true
 
   build:
     name: Build and Push Docker image to Amazon ECR
@@ -68,9 +80,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: starter/frontend/package-lock.json
+
       - name: Install dependencies
-        run: |
-          npm install
+        run: npm ci
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -90,7 +108,7 @@ jobs:
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: frontend
-          IMAGE_TAG: latest
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           echo "Registry: $REGISTRY"
           echo "Repository: $REPOSITORY"
@@ -137,15 +155,14 @@ jobs:
           aws eks update-kubeconfig --name cluster
 
       - name: Run init.sh
-        run:  |
-          ./init.sh || true
+        run: ./init.sh
         working-directory: ./setup
 
       - name: Set Docker image in Kustomize
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: frontend
-          IMAGE_TAG: latest
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           kustomize edit set image frontend=$REGISTRY/$REPOSITORY:$IMAGE_TAG
         working-directory: ./starter/frontend/k8s

@@ -11,7 +11,7 @@ on:
       - "starter/backend/**"
 
 env:
-  PYTHON_VERSION: 3.11
+  PYTHON_VERSION: '3.10'
 
 jobs:
   lint:
@@ -42,8 +42,7 @@ jobs:
           pip install pipenv
 
       - name: Install dependencies
-        run: |
-          pipenv install
+        run: pipenv install --dev --deploy
 
       - name: Run lint
         run: |
@@ -69,8 +68,7 @@ jobs:
           pip install pipenv
 
       - name: Install dependencies
-        run: |
-          pipenv install
+        run: pipenv install --dev --deploy
 
       - name: Run tests
         run: |
@@ -84,44 +82,8 @@ jobs:
       run:
         working-directory: ./starter/backend
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{env.PYTHON_VERSION}}
-
-      - name: Install pipenv
-        run: |
-          pip install pipenv
-
-      - name: Install dependencies
-        run: |
-          pipenv install
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: us-east-1
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-        with:
-          mask-password: "true"
-
-      - name: Build, Tag, and Push docker image
-        env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY: backend
-          IMAGE_TAG: latest
-        run: |
-          echo "Registry: $REGISTRY"
-          echo "Repository: $REPOSITORY"
+      - name: Build Docker image
+        run: docker build -t backend:${{ github.sha }} .
           echo "Image Tag: $IMAGE_TAG"
           docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG .
           docker images
